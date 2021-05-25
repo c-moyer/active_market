@@ -1,3 +1,4 @@
+require_relative "./spec_helper"
 require 'active_market'
 require "json"
 
