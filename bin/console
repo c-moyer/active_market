@@ -10,5 +10,16 @@ require "active_market"
 # require "pry"
 # Pry.start
 
+
+require 'yaml'
+
+if File.file?("credentials.yml")
+  File.open("credentials.yml", 'r') do |f|
+    y = YAML.load(f.read)
+    raise StandardError.new "Yaml load failed" unless y
+    ENV["walmart_client_id"] = y["walmart"]["client_id"]
+    ENV["walmart_client_secret"] = y["walmart"]["client_secret"]
+  end
+end
 require "irb"
 IRB.start(__FILE__)

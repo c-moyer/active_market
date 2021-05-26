@@ -15,6 +15,20 @@ module ActiveMarket
       @auth_code = credentials[:auth_code]
     end
 
-  end
+    def self.load_from_environment(api_target: nil)
+      raise ArgumentError.new "api_target is expected, was #{api_target}" if api_target.nil?
+      case api_target
+      when :walmart
+        creds = {
+          client_id: ENV["walmart_client_id"],
+          client_secret: ENV["walmart_client_secret"]
+        }
+      else
+        raise StandardError.new "could not set creds for api_target #{api_target}"
+      end
+      raise StandardError.new "some cred failed to load #{creds}" if creds.values.any?(&:nil?)
+      self.new(creds)
+    end
 
-end
+  end
+end 
