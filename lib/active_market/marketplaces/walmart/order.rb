@@ -196,6 +196,97 @@ class ActiveMarket::Walmart
 
     end#end get_orders
 
+    def get_next_page(next_page: nil)
+      raise ArgumentError "next_page should not be nil" if next_page.nil?
+      endpoint = "https://marketplace.walmartapis.com/v3/orders#{next_page}"
+      uri = URI.parse(endpoint)
+      
+      header = @header
+
+      header["WM_QOS.CORRELATION_ID"] = SecureRandom.uuid.to_s
+
+      # Create the HTTP objects
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      request = Net::HTTP::Get.new(uri.request_uri, header)
+
+      # Send the request
+      response = http.request(request)
+
+      success = response_success?(response)
+      code = response.code
+
+      if valid_json?(response.body)
+        body = JSON.parse(response.body)
+      else
+        body = response.body
+      end
+
+      if success
+        orders = parse_orders_response(body)
+      end
+
+      begin
+        return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders, next_page: (body["list"]["meta"]["nextCursor"] unless !success) }), {body: body, code: code})
+      rescue ActiveMarket::ResponseError => e
+        return ErrorHandler.new(e)
+      end
+    end
+
+    def get_all_since(time_ago: 24.hours)
+
+      def time_to_api_time(time)
+        time.strftime("%Y-%m-%dT%H:%M:%SZ")
+      end
+
+      end_time = Time.current
+      start_time = end_time - time_ago
+
+      endpoint = "https://marketplace.walmartapis.com/v3/orders"
+      uri = URI.parse(endpoint)
+      params = {
+        #gets orders before and after the start and end dates format: 2020-01-16T10:30:15Z
+        'createdStartDate' => time_to_api_time(start_time),
+        'createdEndDate' => time_to_api_time(end_time),
+        'limit' => 200
+      }
+      uri.query = URI.encode_www_form(params)
+
+
+      header = @header
+
+      header["WM_QOS.CORRELATION_ID"] = SecureRandom.uuid.to_s
+
+      # Create the HTTP objects
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      request = Net::HTTP::Get.new(uri.request_uri, header)
+
+      # Send the request
+      response = http.request(request)
+
+      success = response_success?(response)
+      code = response.code
+
+      if valid_json?(response.body)
+        body = JSON.parse(response.body)
+      else
+        body = response.body
+      end
+
+      if success
+        orders = parse_orders_response(body)
+      end
+
+      begin
+        return ActiveMarket::Response.new(ActiveMarket::OrdersResult.new({orders: orders, next_page: (body["list"]["meta"]["nextCursor"] unless !success) }), {body: body, code: code})
+      rescue ActiveMarket::ResponseError => e
+        return ErrorHandler.new(e)
+      end
+
+
+    end
+
 
     private
     def parse_orders_response(response)
